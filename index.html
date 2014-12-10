@@ -8,14 +8,20 @@
     width: 50%;
     float: left;
   }
-  @media screen and (max-width: 700px) {
-    #board {
-      width: 100%;
-    }
-  }
   .info {
     float: left;
     margin-left: 2em;
+    width: 45%;
+  }
+  #fen {
+    clear: both;
+  }
+  
+  @media screen and (max-width: 700px) {
+    #board, .info {
+      width: 100%;
+    }
+    
   }
 </style>
 <body>
@@ -27,6 +33,9 @@
     <div id="pgn">
     </div>
   </div>
+  <div id="fen">
+  </div>
+  
   
   
 
@@ -41,12 +50,13 @@
     http://chessboardjs.com/examples#5000
     */
   
-    var board, game, statusEl, pgnEl;
+    var board, game, statusEl, pgnEl, fenEl;
     
     function initChess() {
       game = new Chess();
       statusEl = $('#status');
       pgnEl = $('#pgn');
+      fenEl = $('#fen');
       
       var cfg = {
         draggable: true,
@@ -121,8 +131,9 @@
       }
       
       statusEl.html(status);
-      setHash(game.pgn());
       pgnEl.html(game.pgn());
+      fenEl.html(game.fen());
+      setHash(game);
     };
     
     function setFen(fen) {
@@ -137,17 +148,27 @@
       updateStatus();
     }
     
-    function setHash(pgn) {
-      pgn = pgn.replace(/\s/g, '/')
-      window.location.hash = '#pgn/' + pgn;
-    }
-    
-
     function parseHash(hash) {
       var match = /^#(game|fen|pgn).(.*)$/.exec(hash);
       return match ? match.slice(1) : [''];
     }
-
+    
+    function setHash(game) {
+      var parsed = parseHash(window.location.hash),
+          type = parsed[0],
+          newHash;
+      switch(type) {
+        case 'fen':
+          newHash = '#fen/' + game.fen()
+          break;
+        case 'pgn':
+        default:
+          newHash = '#pgn/' + game.pgn().replace(/\s/g, '/')
+          break;
+      }
+      window.location.hash = newHash;
+    }
+    
     var lastHash;
     function updateGameFromHash(hash) {
       if(hash === lastHash)
