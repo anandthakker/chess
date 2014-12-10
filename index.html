@@ -1,0 +1,171 @@
+<!doctype html>
+<html>
+<head>
+  <link rel="stylesheet" href="vendor/chessboardjs-0.3.0/css/chessboard-0.3.0.css" charset="utf-8">
+</head>
+<style>
+  #board {
+    width: 50%;
+    float: left;
+  }
+  @media screen and (max-width: 700px) {
+    #board {
+      width: 100%;
+    }
+  }
+  .info {
+    float: left;
+  }
+</style>
+<body>
+  <div id="board">
+  </div>
+  <div class="info">
+    <div id="status">
+    </div>
+    <div id="pgn">
+    </div>
+  </div>
+  
+  
+
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <script>window.jQuery || document.write('<script src="vendor/jquery-1.11.1.min.js"><\/script>')</script>
+  <script src="vendor/chessboardjs-0.3.0/js/chessboard-0.3.0.min.js"></script>
+  <script src="vendor/chess.js"></script>
+  <script>
+  
+    /*
+    The chess.js and chessboard.js integration is from
+    http://chessboardjs.com/examples#5000
+    */
+  
+    var board, game, statusEl, pgnEl;
+    
+    function initChess() {
+      game = new Chess();
+      statusEl = $('#status');
+      pgnEl = $('#pgn');
+      
+      var cfg = {
+        draggable: true,
+        position: 'start',
+        onDragStart: onDragStart,
+        onDrop: onDrop,
+        onSnapEnd: onSnapEnd,
+        pieceTheme: 'vendor/chessboardjs-0.3.0/img/chesspieces/wikipedia/{piece}.png'
+      };
+      board = new ChessBoard('board', cfg);
+      
+      updateStatus();
+    }
+    
+    // do not pick up pieces if the game is over
+    // only pick up pieces for the side to move
+    function onDragStart(source, piece, position, orientation) {
+      if (game.game_over() === true ||
+        (game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+        (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+          return false;
+        }
+      };
+      
+    function onDrop(source, target) {
+      // see if the move is legal
+      var move = game.move({
+        from: source,
+        to: target,
+        promotion: 'q' // NOTE: always promote to a queen for example simplicity
+      });
+      
+      // illegal move
+      if (move === null) return 'snapback';
+      
+      updateStatus();
+    };
+      
+    // update the board position after the piece snap 
+    // for castling, en passant, pawn promotion
+    function onSnapEnd() {
+      board.position(game.fen());
+    };
+    
+    function updateStatus() {
+      var status = '';
+      
+      var moveColor = 'White';
+      if (game.turn() === 'b') {
+        moveColor = 'Black';
+      }
+      board.orientation(game.turn() === 'b' ? 'black' : 'white');
+      
+      // checkmate?
+      if (game.in_checkmate() === true) {
+        status = 'Game over, ' + moveColor + ' is in checkmate.';
+      }
+      
+      // draw?
+      else if (game.in_draw() === true) {
+        status = 'Game over, drawn position';
+      }
+      
+      // game still on
+      else {
+        status = moveColor + ' to move';
+        
+        // check?
+        if (game.in_check() === true) {
+          status += ', ' + moveColor + ' is in check';
+        }
+      }
+      
+      statusEl.html(status);
+      setHash(game.pgn());
+      pgnEl.html(game.pgn());
+    };
+    
+    function setFen(fen) {
+      game.load(fen);
+      board.position(game.fen(), false);
+      updateStatus();
+    }
+    
+    function setPgn(pgn) {
+      game.load_pgn(pgn);
+      board.position(game.fen(), false);
+      updateStatus();
+    }
+    
+    function setHash(pgn) {
+      pgn = pgn.replace(/\s/g, '/')
+      window.location.hash = '#pgn/' + pgn;
+    }
+    
+
+    $(function() {
+      var hash = window.location.hash.slice(1);
+      
+      initChess();
+      
+      if(/^game/.test(hash)) {
+        hash = decodeURIComponent(hash.slice(5));
+        $.get(hash)
+        .done(function(data) {
+          setPgn(data.pgn);
+        })
+        .fail(function(data) {
+          console.error('couldn\'t load game from', hash);
+          window.location.hash = '';
+        })
+      }
+      else if(/^fen/.test(hash)) {
+        setFen(hash.slice(4));
+      }
+      else if(/^pgn/.test(hash)) {
+        hash = hash.replace(/\//g, ' ');
+        setPgn(hash.slice(4));
+      }
+    });
+  </script>
+</body>
+</html>
