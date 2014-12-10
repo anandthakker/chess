@@ -143,29 +143,49 @@
     }
     
 
-    $(function() {
-      var hash = window.location.hash.slice(1);
+    function parseHash(hash) {
+      var match = /^#(game|fen|pgn).(.*)$/.exec(hash);
+      return match ? match.slice(1) : [''];
+    }
+
+    var lastHash;
+    function updateGameFromHash(hash) {
+      if(hash === lastHash)
+        return;
       
-      initChess();
-      
-      if(/^game/.test(hash)) {
-        hash = decodeURIComponent(hash.slice(5));
-        $.get(hash)
+      var parsed = parseHash(hash),
+          type = parsed[0],
+          value = parsed[1] || '';
+          
+      if(type === 'game') {
+        value = decodeURIComponent(value);
+        $.get(value)
         .done(function(data) {
           setPgn(data.pgn);
         })
         .fail(function(data) {
-          console.error('couldn\'t load game from', hash);
-          window.location.hash = '';
+          console.error('couldn\'t load game from', value);
+          window.location.hash = lastHash;
         })
       }
-      else if(/^fen/.test(hash)) {
-        setFen(hash.slice(4));
+      else if(type === 'fen') {
+        setFen(value);
       }
-      else if(/^pgn/.test(hash)) {
-        hash = hash.replace(/\//g, ' ');
-        setPgn(hash.slice(4));
+      else if(type === 'pgn') {
+        value = value.replace(/\//g, ' ');
+        setPgn(value);
       }
+    }
+
+    $(function() {
+      var hash = window.location.hash;
+      initChess();
+      updateGameFromHash(hash);
+      
+      $(window).on('hashchange', function() {
+        updateGameFromHash(window.location.hash);
+      })
+      
     });
   </script>
 </body>
